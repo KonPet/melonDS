@@ -30,6 +30,10 @@
 #include <QCloseEvent>
 #include <QTimer>
 
+#include <libusb.h>
+#include <hidapi.h>
+#include <memory>
+
 #include "glad/glad.h"
 #include "ScreenLayout.h"
 #include "duckstation/gl/context.h"
@@ -169,6 +173,33 @@ private:
 
     QImage screen[2];
     QTransform screenTrans[kMaxScreenTransforms];
+
+    // This could be the same as keyboard_dev if I had access to C++23's out_ptr...
+    struct CtxManager {
+        CtxManager() {
+            if (libusb_init(&ctx) >= 0) valid = true;
+        }
+
+        ~CtxManager() {
+            libusb_exit(ctx);
+        }
+
+        [[nodiscard]] operator bool() const { return valid; }
+        [[nodiscard]] libusb_context* get() const { return ctx; }
+
+        libusb_context* ctx{};
+        bool valid{};
+    };
+
+    CtxManager ctx{};
+
+    constexpr static int NATIVE_INSTRUMENTS = 0x17cc;  // VendorID
+    constexpr static int KK_S61_MK2 = 0x1620;          // ProductID
+
+    static inline auto close_handle = [](libusb_device_handle* handle) { libusb_close(handle); };
+    std::unique_ptr<libusb_device_handle, decltype(close_handle)> keyboard_dev;
+
+    bool libusb_interface_claimed{};
 };
 
 

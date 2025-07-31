@@ -33,3 +33,7 @@ else()
     fix_interface_includes(PkgConfig::ENet)
     target_link_libraries(net-utils PUBLIC PkgConfig::ENet)
 endif()
+
+
+find_package(hidapi REQUIRED)
+target_link_libraries(net-utils PUBLIC hidapi::hidapi)

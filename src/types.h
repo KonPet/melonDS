@@ -33,6 +33,16 @@ typedef int16_t     s16;
 typedef int32_t     s32;
 typedef int64_t     s64;
 
+inline u8 operator""_U8(unsigned long long a) { return static_cast<u8>(a); }
+inline u16 operator""_U16(unsigned long long a) { return static_cast<u16>(a); }
+inline u32 operator""_U32(unsigned long long a) { return static_cast<u32>(a); }
+inline u64 operator""_U64(unsigned long long a) { return static_cast<u64>(a); }
+
+inline s8 operator""_S8(unsigned long long a) { return static_cast<s8>(a); }
+inline s16 operator""_S16(unsigned long long a) { return static_cast<s16>(a); }
+inline s32 operator""_S32(unsigned long long a) { return static_cast<s32>(a); }
+inline s64 operator""_S64(unsigned long long a) { return static_cast<s64>(a); }
+
 template<class T, std::size_t A, std::size_t B>
 using array2d = std::array<std::array<T, B>, A>;
 }

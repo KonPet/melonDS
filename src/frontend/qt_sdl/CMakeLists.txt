@@ -38,6 +38,7 @@ set(SOURCES_QT_SDL
     SaveManager.cpp
     CameraManager.cpp
     AboutDialog.cpp
+    KKUtils.cpp
     AboutDialog.h
     AboutDialog.ui
 
@@ -260,3 +261,8 @@ if (ENABLE_OGLRENDERER)
     target_compile_definitions(melonDS PUBLIC MELONDS_GL_HEADER=${MELONDS_GL_HEADER})
     target_compile_definitions(core PUBLIC MELONDS_GL_HEADER=${MELONDS_GL_HEADER})
 endif()
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBUSB REQUIRED libusb-1.0)
+target_include_directories(melonDS PRIVATE ${LIBUSB_INCLUDE_DIRS})
+target_link_libraries(melonDS PRIVATE ${LIBUSB_LIBRARIES})

@@ -48,6 +48,8 @@
 #include "font.h"
 #include "version.h"
 
+#include "KKUtils.h"
+
 using namespace melonDS;
 
 
@@ -746,17 +748,40 @@ void ScreenPanel::calcSplashLayout()
 
 
 
-ScreenPanelNative::ScreenPanelNative(QWidget* parent) : ScreenPanel(parent)
+ScreenPanelNative::ScreenPanelNative(QWidget* parent)
+    : ScreenPanel(parent), keyboard_dev(nullptr, close_handle)
 {
     screen[0] = QImage(256, 192, QImage::Format_RGB32);
     screen[1] = QImage(256, 192, QImage::Format_RGB32);
 
     screenTrans[0].reset();
     screenTrans[1].reset();
+
+    if (ctx) {
+        keyboard_dev.reset(
+            libusb_open_device_with_vid_pid(ctx.get(), NATIVE_INSTRUMENTS, KK_S61_MK2)
+        );
+
+        if (keyboard_dev) {
+            if (libusb_claim_interface(keyboard_dev.get(), 3) >= 0) {
+                libusb_interface_claimed = true;
+
+                // Clear both screens
+                KKUtils::Imager img1(0, 0, 0, 480, 272);
+                KKUtils::Imager img2(1, 0, 0, 480, 272);
+
+                img1.send(keyboard_dev.get());
+                img2.send(keyboard_dev.get());
+            }
+        }
+    }
 }
 
 ScreenPanelNative::~ScreenPanelNative()
 {
+    if (libusb_interface_claimed) {
+        libusb_release_interface(keyboard_dev.get(), 3);
+    }
 }
 
 void ScreenPanelNative::setupScreenLayout()
@@ -781,8 +806,7 @@ void ScreenPanelNative::paintEvent(QPaintEvent* event)
 
     auto emuThread = emuInstance->getEmuThread();
 
-    if (emuThread->emuIsActive())
-    {
+    if (emuThread->emuIsActive()) {
         emuInstance->renderLock.lock();
         auto nds = emuInstance->getNDS();
 
@@ -798,6 +822,43 @@ void ScreenPanelNative::paintEvent(QPaintEvent* event)
         memcpy(screen[0].scanLine(0), nds->GPU.Framebuffer[frontbuf][0].get(), 256 * 192 * 4);
         memcpy(screen[1].scanLine(0), nds->GPU.Framebuffer[frontbuf][1].get(), 256 * 192 * 4);
         emuThread->frontBufferLock.unlock();
+
+        if (keyboard_dev) {
+            constexpr int w = 256;
+            constexpr int h = 192;
+
+            static std::vector<std::thread> t{};
+            std::vector<u8> convertedScreens[2];
+
+            // Convert both screens from BGR(A?) to RGB565
+            for (int screenNum = 0; screenNum < 2; screenNum++) {
+                for (int i = 0; i < w * h; i++) {
+                    convertedScreens[screenNum].resize(w * h * 2);
+
+                    const unsigned r = screen[screenNum].scanLine(0)[i * 4 + 2] * 0x1f / 0xff;
+                    const unsigned g = screen[screenNum].scanLine(0)[i * 4 + 1] * 0x3f / 0xff;
+                    const unsigned b = screen[screenNum].scanLine(0)[i * 4 + 0] * 0x1f / 0xff;
+
+                    const unsigned c = (r << 11) | (g << 5) | (b << 0);
+
+                    convertedScreens[screenNum][i * 2 + 0] = (c >> 8) & 0xff;
+                    convertedScreens[screenNum][i * 2 + 1] = (c >> 0) & 0xff;
+                }
+            }
+
+            // Create the two packets
+            static KKUtils::Imager img1(false, (480 - w) / 2, (272 - h) / 2, w, h);
+            static KKUtils::Imager img2(true, (480 - w) / 2, (272 - h) / 2, w, h);
+
+            img1.write_img(convertedScreens[0]);
+            img2.write_img(convertedScreens[1]);
+
+            // Concatenate the two packets into one
+            const KKUtils::Imager combined{img1, img2};
+
+            // Upload both screens in a single bulk transfer
+            combined.send(keyboard_dev.get());
+        }
 
         QRect screenrc(0, 0, 256, 192);
 

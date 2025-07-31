@@ -45,6 +45,9 @@
 #include "ARMJIT.h"
 #include "ARMJIT_Memory.h"
 
+#include "KKInput.h"
+#include <iostream>
+
 namespace melonDS
 {
 using namespace Platform;
@@ -120,7 +123,8 @@ NDS::NDS(NDSArgs&& args, int type, void* userdata) noexcept :
         DMA(1, 1, *this),
         DMA(1, 2, *this),
         DMA(1, 3, *this),
-    }
+    },
+    keyboard_hid(nullptr, close_hid_device)
 {
     RegisterEventFuncs(Event_Div, this, {MakeEventThunk(NDS, DivDone)});
     RegisterEventFuncs(Event_Sqrt, this, {MakeEventThunk(NDS, SqrtDone)});
@@ -128,6 +132,18 @@ NDS::NDS(NDSArgs&& args, int type, void* userdata) noexcept :
     MainRAM = JIT.Memory.GetMainRAM();
     SharedWRAM = JIT.Memory.GetSharedWRAM();
     ARM7WRAM = JIT.Memory.GetARM7WRAM();
+
+    if (hid_init() >= 0) {
+        hid_initialized = true;
+
+        keyboard_hid.reset(
+            hid_open(NATIVE_INSTRUMENTS, KK_S61_MK2, nullptr)
+        );
+
+        if (keyboard_hid) {
+            hid_set_nonblocking(keyboard_hid.get(), 1);
+        }
+    }
 }
 
 NDS::~NDS() noexcept
@@ -1197,6 +1213,21 @@ void NDS::SetKeyMask(u32 mask)
     u32 oldkey = KeyInput;
     KeyInput &= 0xFFFCFC00;
     KeyInput |= key_lo | (key_hi << 16);
+
+    if (keyboard_hid) {
+        static KKInput::Kontrols k;
+        std::array<u8, 91> data{};
+        hid_read(keyboard_hid.get(), data.data(), data.size());
+        k.read(data);
+
+        if (k.buttonPlugin) KeyInput &= ~(1 << 0);   // A
+        if (k.buttonMixer) KeyInput &= ~(1 << 16);  // X
+
+        if (k.buttonStop) KeyInput &= ~(1 << 4);    // Right
+        if (k.buttonPlay) KeyInput &= ~(1 << 5);    // Left
+        if (k.buttonMetro) KeyInput &= ~(1 << 6);   // Up
+        if (k.buttonRec) KeyInput &= ~(1 << 7);     // Down
+    }
 
     CheckKeyIRQ(0, oldkey, KeyInput);
     CheckKeyIRQ(1, oldkey, KeyInput);

@@ -38,6 +38,7 @@ add_library(core STATIC
     GPU3D_Soft.cpp
     GPU3D_Texcache.cpp
     GPU3D_Texcache.h
+    KKInput.cpp
     melonDLDI.h
     NDS.cpp
     NDSCart.cpp
@@ -202,6 +203,9 @@ if (ENABLE_JIT_PROFILING)
     target_include_directories(core PRIVATE "${VTUNE_INCLUDE_DIR}")
     target_link_libraries(core PRIVATE "${VTUNE_LIBRARY}")
 endif()
+
+find_package(hidapi REQUIRED)
+target_link_libraries(core PUBLIC hidapi::hidapi)
 
 #if(CMAKE_BUILD_TYPE MATCHES "Debug")
 #  set(

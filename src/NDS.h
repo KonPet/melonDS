@@ -24,6 +24,8 @@
 #include <optional>
 #include <functional>
 
+#include <hidapi.h>
+
 #include "Platform.h"
 #include "Savestate.h"
 #include "types.h"
@@ -545,6 +547,15 @@ private:
     void EnterSleepMode();
     template <CPUExecuteMode cpuMode>
     u32 RunFrame();
+
+
+    constexpr static int NATIVE_INSTRUMENTS = 0x17cc;  // VendorID
+    constexpr static int KK_S61_MK2 = 0x1620;          // ProductID
+
+    static inline auto close_hid_device = [](hid_device* dev) { hid_close(dev); };
+    std::unique_ptr<hid_device, decltype(close_hid_device)> keyboard_hid;
+
+    bool hid_initialized{};
 
 public:
     NDS(NDSArgs&& args, void* userdata = nullptr) noexcept : NDS(std::move(args), 0, userdata) {}
