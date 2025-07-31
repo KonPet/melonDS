@@ -11,10 +11,16 @@
 <a href="https://github.com/melonDS-emu/melonDS/actions/workflows/build-ubuntu.yml?query=event%3Apush"><img src="https://github.com/melonDS-emu/melonDS/actions/workflows/build-ubuntu.yml/badge.svg" /></a>
 <a href="https://github.com/melonDS-emu/melonDS/actions/workflows/build-macos.yml?query=event%3Apush"><img src="https://github.com/melonDS-emu/melonDS/actions/workflows/build-macos.yml/badge.svg" /></a>
 </p>
-DS emulator, sorta
+DS emulator, sorta...?
 
 The goal is to do things right and fast, akin to blargSNES (but hopefully better). But also to, you know, have a fun challenge :)
 <hr>
+
+## What is this fork?
+
+THe goal of this fork is to make it possible for people to play there DS games on a Komplete Kontrol MK2 keyboard by Native Instruments. For any keyboard other than the S61 MK2, you'll just have to overwrite the product ID at two places (I could've added a check but guess I was too lazy).
+
+The majority of my additions are based on [qKontrol](https://github.com/GoaSkin/qKontrol), which is published under the LGPL license. I did none of the reverse engineering myself, so the whole implementation is essentially just a rewrite of their code.
 
 ## How to use
 
